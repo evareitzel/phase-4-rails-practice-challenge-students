@@ -1,7 +1,8 @@
 class InstructorsController < ApplicationController
-  # add rescue_from
-    # Make sure to handle errors and invalid data by returning the appropriate status code along with a message.
+  
+  rescue_from ActiveRecord::RecordNotFound, with: :render_not_found_response
 
+  # GET /instructors
   def index
     instructors = Instructor.all
     render json: instructors
@@ -9,33 +10,40 @@ class InstructorsController < ApplicationController
 
   # GET /instructors/:id
   def show
-    instructor = Instructor.find(params[:id])
+    instructor = find_instructor
     render json: instructor
-    # needs error message (status: :not_found)
+    # rescue_from :render_not_found_response
   end
 
   # POST /instructors
   def create
     instructor = Instructor.create(instructor_params)
-    render json: instructor, status: :created
-    # needs error message - (? status: 	:unprocessable_entity)
+    if instructor.valid?
+      render json: instructor, status: :created
+    else
+      render json: { error: instructor.errors.full_messages }, status: :unprocessable_entity
+    end
   end
 
   # PATCH /instructors/:id
   def update
-    instructor = Instructor.find(params[:id])
+    instructor = find_instructor
     instructor.update(instructor_params)
-    render json: instructor
-    # needs error message
+    if instructor.valid?
+      render json: instructor, status: :accepted
+    else
+      render json: { error: instructor.errors.full_messages }, status: :unprocessable_entity
+    end
   end
 
   # DELETE /instructors/:id
   def destroy
-    instructor = Instructor.find(params[:id])
-    instructor.destroy # attn - no need to destroy dependent collections first (?)
-    render json: {} # status code?
-    # needs error message
+    instructor = find_instructor
+    instructor.destroy
+    render json: {}
+    # rescue_from :render_not_found_response
   end
+
 
   private
 
@@ -43,6 +51,12 @@ class InstructorsController < ApplicationController
     params.permit(:name)
   end
 
-  # AR rescue method
+  def find_instructor
+    Instructor.find(params[:id])
+  end
+
+  def render_not_found_response
+    render json: { error: "Instructor not found" }, status: :not_found
+  end
 
 end
